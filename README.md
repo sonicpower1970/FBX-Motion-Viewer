@@ -24,6 +24,8 @@ skeleton display, frame guide, burn-in, and MP4 export.
 Sequential batch conversion of multiple FBX files to MP4 with automatic
 FPS detection, FIT + FOLLOW camera, burn-in, and output-folder selection.
 
+> **Screenshot sample assets:** Character and animation data shown in the screenshots are from Adobe Mixamo and are used only to demonstrate FBX Motion Viewer. Mixamo and the sample assets are not included with this project.
+
 ## Features
 
 - FBX drag & drop; skeleton-only and skinned meshes; multiple animation takes.
