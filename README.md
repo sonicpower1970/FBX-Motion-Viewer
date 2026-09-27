@@ -2,15 +2,27 @@
 
 **v0.3.0** — A browser-based FBX animation viewer for VFX and motion-capture review. Built with React, TypeScript and Three.js. FBX files are processed locally in your browser.
 
-## Screenshots / Demo
-
-Public screenshots are not included yet. No production assets or production screenshots are distributed.
-
 ## Try it online
 
 [Open FBX Motion Viewer](https://sonicpower1970.github.io/FBX-Motion-Viewer/)
 
 FBX files are processed locally in your browser and are not uploaded to a conversion server. Chrome / Chromium-based browsers are recommended. The site downloads application assets over HTTPS; export API availability depends on your browser and system.
+
+## Screenshots
+
+### FBX Motion Viewer
+
+<img src="docs/images/fbx-motion-viewer.jpg" alt="FBX Motion Viewer showing animation playback and viewport controls" width="1100">
+
+Interactive FBX playback with timeline controls, FIT/FOLLOW camera,
+skeleton display, frame guide, burn-in, and MP4 export.
+
+### Batch FBX → MP4
+
+<img src="docs/images/batch-export.jpg" alt="Batch FBX to MP4 export queue and settings" width="960">
+
+Sequential batch conversion of multiple FBX files to MP4 with automatic
+FPS detection, FIT + FOLLOW camera, burn-in, and output-folder selection.
 
 ## Features
 
