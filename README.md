@@ -4,7 +4,13 @@
 
 ## Screenshots / Demo
 
-Public screenshots are not included yet. No production assets or production screenshots are distributed. A hosted demo has not been published.
+Public screenshots are not included yet. No production assets or production screenshots are distributed.
+
+## Try it online
+
+[Open FBX Motion Viewer](https://sonicpower1970.github.io/FBX-Motion-Viewer/)
+
+FBX files are processed locally in your browser and are not uploaded to a conversion server. Chrome / Chromium-based browsers are recommended. The site downloads application assets over HTTPS; export API availability depends on your browser and system.
 
 ## Features
 
@@ -125,9 +131,9 @@ FBX data is processed in the browser and is not uploaded. The application has no
 
 A hosted version still makes normal network requests to obtain application files, including JS and WASM; the hosting provider can receive ordinary access information. This is different from uploading FBX content. The offline package serves those assets from localhost and has no automatic updater. Development uses local Vite/HMR connections.
 
-## GitHub Pages preparation
+## GitHub Pages
 
-No hosted URL is published yet.
+The Web Viewer is deployed through `.github/workflows/pages.yml` from `main`. The workflow checks lint, types and unit tests, builds the Pages output and deploys only `dist-pages/`, including `legal/`. Release tags and offline packages are independent of this workflow.
 
 ```sh
 npm run build:pages
@@ -135,7 +141,7 @@ npm run build:pages
 
 This creates **dist-pages/** using relative asset URLs, suitable for an unknown Project Pages repository path. JS, CSS, workers, WASM and license links resolve below that path. An optional `PAGES_BASE` environment variable can specify a fixed prefix such as `/FBX-Motion-Viewer/`. Normal `npm run build` separately creates **dist/** for offline packaging.
 
-Deploy the entire generated directory, including **legal/**, only when publication is authorized. Pages needs HTTPS for export APIs. Folder access, file saving and encoder availability remain browser-dependent. No server-side FBX processing is required. A local nested-path browser test is available via `npm run test:pages` after building; actual hosted validation remains necessary.
+Any deployment must include the entire generated directory, including **legal/**. Pages needs HTTPS for export APIs. Folder access, file saving and encoder availability remain browser-dependent. No server-side FBX processing is required. A local nested-path browser test is available via `npm run test:pages` after building; actual hosted validation remains necessary.
 
 ## Known limitations
 
