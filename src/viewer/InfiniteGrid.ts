@@ -1,4 +1,6 @@
 import { Color, Matrix4, Mesh, PerspectiveCamera, PlaneGeometry, ShaderMaterial } from 'three'
+import { BACKGROUND_THEMES } from './backgroundTheme'
+import type { BackgroundMode } from './backgroundTheme'
 
 export interface GridSettings { spacing: number; majorInterval: number; fadeDistance: number; height: number }
 
@@ -71,5 +73,9 @@ export class InfiniteGrid extends Mesh<PlaneGeometry, ShaderMaterial> {
     }
   }
   configure(settings: Partial<GridSettings>) { Object.assign(this.settings, settings) }
+  setBackground(mode: BackgroundMode) {
+    this.material.uniforms.minorColor.value.set(BACKGROUND_THEMES[mode].gridMinor)
+    this.material.uniforms.majorColor.value.set(BACKGROUND_THEMES[mode].gridMajor)
+  }
   dispose() { this.geometry.dispose(); this.material.dispose() }
 }

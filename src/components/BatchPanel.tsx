@@ -1,8 +1,9 @@
+import type { BackgroundMode } from '../viewer/backgroundTheme'
 import { useEffect, useRef, useState } from 'react'
 import { BatchController, chooseBatchFolder, directorySupported } from '../batch/BatchController'
 import type { OutputDirectory } from '../batch/BatchController'
 
-export function BatchPanel({ initialFiles, onClose }: { initialFiles: File[]; onClose: () => void }) {
+export function BatchPanel({ initialFiles, onClose, background }: { initialFiles: File[]; background: BackgroundMode; onClose: () => void }) {
   const [, redraw] = useState(0)
   const [controller] = useState(() => new BatchController(() => redraw(n => n + 1)))
   const [folder, setFolder] = useState<OutputDirectory | null>(null)
@@ -28,7 +29,7 @@ export function BatchPanel({ initialFiles, onClose }: { initialFiles: File[]; on
     try { setFolder(await chooseBatchFolder()); setError('') }
     catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setError(error instanceof Error ? error.message : 'Could not select folder.') }
   }
-  const run = (retry = false) => { if (folder) { setError(''); void controller.run({ directory: folder, resolution, burnIn }, retry) } }
+  const run = (retry = false) => { if (folder) { setError(''); void controller.run({ directory: folder, resolution, burnIn, background }, retry) } }
   const done = controller.jobs.filter(j => j.status === 'Done').length
   const failed = controller.jobs.filter(j => j.status === 'Failed').length
   const cancelled = controller.jobs.filter(j => j.status === 'Cancelled').length

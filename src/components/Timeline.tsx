@@ -15,7 +15,7 @@ interface Props {
 export function Timeline({ state, onSeek, onStep, onPlay, onLoop, onFps, onSpeed }: Props) {
   const frame = displayFrame(state.time, state.duration, state.fps, state.startFrame)
   const last = endFrame(state.duration, state.fps, state.startFrame)
-  const disabled = !state.asset || state.clipIndex < 0 || state.duration <= 0 || state.loading || state.exporting
+  const disabled = !state.asset || state.clipIndex < 0 || state.duration <= 0 || state.loading || (state.exporting || state.capturing)
   const [draft, setDraft] = useState<string | null>(null)
   const ticks = Array.from({ length: 11 }, (_, i) => Math.round(state.startFrame + (last - state.startFrame) * i / 10))
   const commit = () => {
@@ -44,15 +44,15 @@ export function Timeline({ state, onSeek, onStep, onPlay, onLoop, onFps, onSpeed
         <button className="play-button" aria-label={state.playing ? 'Pause' : 'Play'} title="Play / Pause (Space)" disabled={disabled} onClick={onPlay}>{state.playing ? 'Ⅱ' : '▶'}</button>
         <button aria-label="Next frame" title="Next frame (Right arrow)" disabled={disabled} onClick={() => onStep(1)}>›</button>
         <button aria-label="Go to end" title="Go to end (End)" disabled={disabled} onClick={() => onSeek(last)}>▶│</button>
-        <button className="loop-button" aria-pressed={state.loop} aria-label="Loop" disabled={state.exporting} onClick={() => onLoop(!state.loop)}>↻ <span>Loop</span></button>
+        <button className="loop-button" aria-pressed={state.loop} aria-label="Loop" disabled={(state.exporting || state.capturing)} onClick={() => onLoop(!state.loop)}>↻ <span>Loop</span></button>
       </div>
       <label className="fps-picker">Speed
-        <select aria-label="Playback speed" value={state.speed} disabled={state.loading || state.exporting} onChange={event => onSpeed(Number(event.target.value))}>
+        <select aria-label="Playback speed" value={state.speed} disabled={state.loading || (state.exporting || state.capturing)} onChange={event => onSpeed(Number(event.target.value))}>
           {[0.25, 0.5, 1, 2].map(speed => <option key={speed} value={speed}>{speed}×</option>)}
         </select>
       </label>
       <label className="fps-picker">Timeline FPS
-        <select aria-label="Timeline FPS" value={state.fps} disabled={state.loading || state.exporting} onChange={(event) => onFps(Number(event.target.value))}>
+        <select aria-label="Timeline FPS" value={state.fps} disabled={state.loading || (state.exporting || state.capturing)} onChange={(event) => onFps(Number(event.target.value))}>
           {FRAME_RATES.map(({ label, value }) => <option key={label} value={value}>{label}</option>)}
         </select>
       </label>

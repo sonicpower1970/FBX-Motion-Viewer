@@ -10,7 +10,7 @@ import './app.css'
 export default function App() {
   const { container, engine, state, startupError } = useViewer()
   const [batchFiles, setBatchFiles] = useState<File[] | null>(null)
-  const busy = state.loading || state.exporting || batchFiles !== null
+  const busy = state.loading || state.exporting || state.capturing || batchFiles !== null
   const openBatch = (files: File[] = []) => { engine.current?.suspendRendering(true); setBatchFiles(files) }
   const closeBatch = () => { setBatchFiles(null); engine.current?.suspendRendering(false) }
   const fileInput = useRef<HTMLInputElement>(null)
@@ -54,7 +54,7 @@ export default function App() {
     onDragLeave={(event) => { event.preventDefault(); dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDragging(false) }}
     onDrop={(event) => { event.preventDefault(); dragDepth.current = 0; setDragging(false); loadFiles(event.dataTransfer.files) }}>
     <header className="app-header">
-      <div className="brand"><span className="brand-mark" aria-hidden="true">M</span><h1>FBX <strong>Motion Viewer</strong></h1><span className="version">v0.3.0</span></div>
+      <div className="brand"><span className="brand-mark" aria-hidden="true">M</span><h1>FBX <strong>Motion Viewer</strong></h1><span className="version">v0.4.0</span></div>
       <div className="local-badge"><span /> LOCAL FILES ONLY</div>
       <button disabled={busy || !!startupError} onClick={() => openBatch()}>BATCH EXPORT</button>
       <button className="open-button" onClick={open} disabled={busy || !!startupError}>＋ Open FBX</button>
@@ -64,15 +64,16 @@ export default function App() {
     <div className="toolbar">
       <div className="file-label"><span className="file-icon" aria-hidden="true">◇</span><span title={state.asset?.name}>{state.asset?.name ?? 'Untitled scene'}</span>{state.asset && <span className="file-size">{(state.asset.size / 1024 / 1024).toFixed(1)} MB</span>}</div>
       <div className="display-controls" role="group" aria-label="Display options">
-        {(['meshVisible', 'boneVisible', 'gridVisible'] as const).map((kind, index) => <button key={kind} disabled={state.exporting} aria-pressed={state[kind]} onClick={() => engine.current?.setVisibility(kind, !state[kind])}>{['Mesh', 'Bones', 'Grid'][index]}</button>)}
-        <button aria-pressed={state.xray} disabled={state.exporting} onClick={() => engine.current?.setXRay(!state.xray)}>X-Ray</button>
-        <button aria-pressed={state.shadow} disabled={state.exporting} onClick={() => engine.current?.setShadow(!state.shadow)}>Shadow</button>
-        <button aria-pressed={state.burnIn} disabled={state.exporting} onClick={() => engine.current?.setBurnIn(!state.burnIn)}>BURN-IN</button>
-        <button className="frame-guide-button" aria-label="16:9 Frame Guide" title="16:9 Frame Guide" disabled={state.exporting} aria-pressed={state.frameGuide !== 'off'} onClick={() => engine.current?.setFrameGuide(state.frameGuide === 'off' ? '16:9' : 'off')}>
+        {(['meshVisible', 'boneVisible', 'gridVisible'] as const).map((kind, index) => <button key={kind} disabled={state.exporting || state.capturing} aria-pressed={state[kind]} onClick={() => engine.current?.setVisibility(kind, !state[kind])}>{['Mesh', 'Bones', 'Grid'][index]}</button>)}
+        <button aria-pressed={state.xray} disabled={state.exporting || state.capturing} onClick={() => engine.current?.setXRay(!state.xray)}>X-Ray</button>
+        <button aria-pressed={state.shadow} disabled={state.exporting || state.capturing} onClick={() => engine.current?.setShadow(!state.shadow)}>Shadow</button>
+        <button aria-pressed={state.burnIn} disabled={state.exporting || state.capturing} onClick={() => engine.current?.setBurnIn(!state.burnIn)}>BURN-IN</button>
+        <button className="frame-guide-button" aria-label="16:9 Frame Guide" title="16:9 Frame Guide" disabled={state.exporting || state.capturing} aria-pressed={state.frameGuide !== 'off'} onClick={() => engine.current?.setFrameGuide(state.frameGuide === 'off' ? '16:9' : 'off')}>
           <svg width="22" height="16" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" aria-hidden="true" focusable="false">
             <path d="M8 2H2v4M16 2h6v4M2 12v4h6M22 12v4h-6" />
           </svg>
         </button>
+        <button aria-label="Light viewport background" title="Viewport background: Dark / Light" aria-pressed={state.background === 'light'} disabled={busy} onClick={() => engine.current?.setBackground(state.background === 'dark' ? 'light' : 'dark')}>{state.background === 'dark' ? '◐ DARK' : '☀ LIGHT'}</button>
         <span className="separator" />
         <button aria-label="FIT" aria-pressed={state.fitEnabled} disabled={busy} onClick={() => engine.current?.setFitEnabled(!state.fitEnabled)} title="Toggle automatic fitting. F fits the current frame once.">FIT <kbd>F</kbd></button>
         <button aria-pressed={state.follow} disabled={busy || !state.asset} onClick={() => engine.current?.setFollow(!state.follow)}>Follow</button>
@@ -87,7 +88,7 @@ export default function App() {
       <span>{state.asset ? `${state.asset.meshes} meshes · ${state.asset.bones} bones · ${state.asset.clips.length} takes` : 'Ready for motion review'}</span>
     </div>
 
-    <section className={`viewport-shell${state.burnIn ? ' has-burn-in' : ''}`} aria-label="Viewer">
+    <section className={`viewport-shell${state.burnIn ? ' has-burn-in' : ''}`} aria-label="Viewer" data-background={state.background}>
       <div className="viewport" ref={container} />
       <FrameGuide mode={state.frameGuide} />
       <div className="viewport-label">PERSPECTIVE <span>Y UP</span></div>
@@ -99,17 +100,17 @@ export default function App() {
         <small>Maya / MotionBuilder · Up to 500 MiB · Processed locally</small>
       </div>}
       {state.loading && <div className="loading-overlay" role="status"><span className="spinner" /><strong>Loading {state.pendingName}</strong><span>Parsing locally. Large files can take a while.</span><button onClick={() => engine.current?.cancelLoad()}>Cancel loading</button></div>}
-      {state.exporting && <div className="loading-overlay" role="status"><strong>{state.exportStatus}</strong><progress aria-label="Export progress" max={1} value={state.exportProgress} /><span>{Math.floor(state.exportProgress * 100)}%</span><span>The viewer will be restored when export finishes.</span><button onClick={() => engine.current?.cancelExport()}>Cancel export</button></div>}
+      {(state.exporting || state.capturing) && <div className="loading-overlay" role="status"><strong>{state.exportStatus}</strong>{state.exporting && <><progress aria-label="Export progress" max={1} value={state.exportProgress} /><span>{Math.floor(state.exportProgress * 100)}%</span></>}<span>{state.capturing ? 'Saving the current frame and camera composition.' : 'The viewer will be restored when export finishes.'}</span><button onClick={() => engine.current?.cancelExport()}>{state.capturing ? 'Cancel capture' : 'Cancel export'}</button></div>}
       <div className="navigation-hint"><span>Alt + drag</span> Orbit / Pan / Dolly <b>·</b> Scroll to zoom <b>·</b> <span>F</span> Fit</div>
     </section>
 
     {error && <div className="error-banner" role="alert">{error}</div>}
     {!!state.asset?.warnings.length && <details className="warnings"><summary>{state.asset.warnings.length} asset notice{state.asset.warnings.length === 1 ? '' : 's'}</summary><ul>{state.asset.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></details>}
 
-    <PreviewPanel state={state} onExport={resolution => { void engine.current?.exportMovie(resolution) }} />
+    <PreviewPanel onCapture={() => { void engine.current?.captureImage() }} state={state} onExport={resolution => { void engine.current?.exportMovie(resolution) }} />
     <Timeline state={state} onSeek={(frame) => engine.current?.seekFrame(frame)} onStep={(direction) => engine.current?.step(direction)} onPlay={() => engine.current?.togglePlay()} onLoop={(loop) => engine.current?.setLoop(loop)} onSpeed={speed => engine.current?.setSpeed(speed)} onFps={(fps) => engine.current?.setFps(fps)} />
 
-    <footer className="status-bar"><span><i className="status-dot" />{state.exporting ? 'EXPORTING' : state.loading ? 'LOADING' : state.playing ? 'PLAYING' : state.asset ? 'READY' : 'NO FILE LOADED'}</span><span>Space Play / Pause <b>·</b> ← → Frame step</span><a href={`${import.meta.env.BASE_URL}legal/index.html`} target="_blank" rel="noopener noreferrer">Licenses</a><span className="render-fps">Render <strong>{Math.round(state.renderFps)}</strong> FPS</span></footer>
+    <footer className="status-bar"><span><i className="status-dot" />{state.capturing ? 'CAPTURING' : state.exporting ? 'EXPORTING' : state.loading ? 'LOADING' : state.playing ? 'PLAYING' : state.asset ? 'READY' : 'NO FILE LOADED'}</span><span>Space Play / Pause <b>·</b> ← → Frame step</span><a href={`${import.meta.env.BASE_URL}legal/index.html`} target="_blank" rel="noopener noreferrer">Licenses</a><span className="render-fps">Render <strong>{Math.round(state.renderFps)}</strong> FPS</span></footer>
     {dragging && <div className="drop-overlay"><strong>{state.loading ? 'Please wait for the current file' : 'Drop your FBX here'}</strong><span>Files stay on this computer</span></div>}
-  </main>{batchFiles !== null && <BatchPanel initialFiles={batchFiles} onClose={closeBatch} />}</>
+  </main>{batchFiles !== null && <BatchPanel background={state.background} initialFiles={batchFiles} onClose={closeBatch} />}</>
 }

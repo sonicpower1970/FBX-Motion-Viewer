@@ -2,14 +2,14 @@
 
 ## Scope
 
-Version 0.2 is an English, dark desktop web application for local VFX/mocap review.
+Version 0.4.0 is an English, dark desktop web application for local VFX/mocap review.
 Target platforms: Chrome on macOS, Windows, Linux. Primary sources: Maya / MotionBuilder.
 Runtime: React UI + TypeScript + Vite + Three.js WebGLRenderer (WebGL 2).
-No upload backend or persistent user settings. v0.2 adds review controls and local WebCodecs/mediabunny preview export; see [v0.2](v0.2.md).
+No upload backend or persistent user settings. v0.4.0 adds viewport DARK/LIGHT and current-frame PNG capture; see [v0.4.0](v0.4.0.md). Existing single MP4 and [batch export](v0.3.0.md) remain available.
 
 ## Offline distribution
 
-- Build the same `dist/` used for future static online hosting.
+- Build the same `dist/` used for offline distribution; Pages uses its separate relative-path build.
 - Package separate official Node 24 runtimes for macOS arm64/x64, Windows x64/arm64, and glibc Linux x64/arm64.
 - Verify runtime archives against the official version-specific SHA-256 list before packaging. Ship runtime and frontend third-party licenses.
 - Deliver ZIP + SHA-256 file. Recipients extract the full ZIP and run the OS launcher; no Node installation, npm, build tools or internet required at runtime.
@@ -19,7 +19,7 @@ No upload backend or persistent user settings. v0.2 adds review controls and loc
 - Keep the terminal running while using the viewer; Ctrl+C stops it. No auto-update. Replace the full release folder for upgrades.
 - Packages are not signed/notarized; OS first-run protections may require user action. Do not disable or automatically bypass OS protections.
 - Packaging runs on macOS/Linux with tar/unzip/zip. Only the Apple Silicon Mac package has been execution-tested locally; other targets require real-machine acceptance.
-- This is deployment packaging for v0.1, not a v0.2 feature or a desktop Electron app.
+- The macOS app delegates to the bundled command launcher and static server; it is not an Electron application.
 
 ## Input and privacy
 
@@ -59,7 +59,7 @@ The authoritative time is seconds, represented by a JavaScript number. Do not ac
 - Play at the endpoint restarts at zero. No-animation and zero-duration assets disable transport.
 - Pause and seek must work after reaching a non-looping end. The mixer remains at timeScale=1; the controller owns playback state.
 - Hidden-tab elapsed time is ignored on return. Frame stepping is independent of monitor refresh and render FPS.
-- Source FBX time mode and source frame numbering are not inferred. No SMPTE drop-frame timecode.
+- Viewer FPS is selected manually; Batch FPS AUTO detects source time metadata. Original source frame numbering and SMPTE drop-frame timecode are not implemented.
 
 ## Viewport and camera
 
@@ -72,6 +72,17 @@ The authoritative time is seconds, represented by a JavaScript number. Do not ac
 - Disable bind-pose frustum culling for skinned meshes to avoid disappearing animated geometry.
 - Display filename, take, mesh/bone/take counts, Timeline FPS, Render FPS, Current Frame and End Frame.
 - Space = Play/Pause, Left/Right = frame step, Home/End = timeline endpoints. Form controls retain their own keyboard behavior.
+
+## Viewport background and PNG capture
+
+- Default DARK `#1c232b`; LIGHT neutral gray `#b8b8b8`. Application UI stays dark.
+- Helper palettes adjust grid, bones, guide and burn-in contrast without changing FBX materials, textures, animation, camera or lights.
+- CAPTURE saves the current pose and camera, without Fit, seek or Follow reinitialization, including static FBX.
+- Guide ON: shared centered 16:9 projection at 1920×1080, excluding guide UI. OFF: full viewport at CSS pixel dimensions, independent of DPR.
+- Shared Viewer/PNG/MP4 burn-in layout; static Viewer/PNG displays filename only.
+- Animated PNG filename includes the presented current frame; static filename omits it. Source paths are excluded.
+- Native Save File Picker with normal cancellation; download fallback when unavailable.
+- Single and Batch MP4 inherit the selected background. Existing batch policies remain unchanged.
 
 ## Architecture and lifecycle
 

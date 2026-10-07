@@ -16,6 +16,18 @@
 
 .display-controls .frame-guide-button{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:26px;padding:4px 6px}
 
+/* Only viewport helper overlays respond to background mode; app chrome stays dark. */
+.viewport-shell[data-background=light] .frame-guide{outline-color:#343a4080}
+.viewport-shell[data-background=light] .frame-guide span{color:#343a40b3}
+.viewport-shell[data-background=light] .viewport-label,
+.viewport-shell[data-background=light] .navigation-hint span{color:#3b4148}
+.viewport-shell[data-background=light] .viewport-label span,
+.viewport-shell[data-background=light] .navigation-hint,
+.viewport-shell[data-background=light] .empty-state p,
+.viewport-shell[data-background=light] .empty-state small{color:#50565d}
+.viewport-shell[data-background=light] .empty-state h2{color:#30363d}
+.viewport-shell[data-background=light] .empty-icon{stroke:#505d66}
+
 .batch-panel { color: #dae0e8; background: #20262f; border: 1px solid #526071; border-radius: 8px; width: min(1100px, 94vw); max-height: 90vh; padding: 24px; }
 .batch-panel::backdrop { background: #05090ec9; }
 .batch-panel header, .batch-actions, .batch-settings { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; }

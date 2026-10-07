@@ -29,6 +29,12 @@ export function displayFrame(time: number, duration: number, fps: number, startF
     : frameAtTime(time, fps, startFrame)
 }
 
+// Shared presentation numbering for Burn-in and still-image filenames.
+export function formatFrame(frame: number, end: number) {
+  const digits = Math.max(4, String(Math.abs(end)).length, String(Math.abs(frame)).length)
+  return `${frame < 0 ? '-' : ''}${String(Math.abs(frame)).padStart(digits, '0')}`
+}
+
 export function steppedTime(time: number, direction: -1 | 1, duration: number, fps: number) {
   const frame = displayFrame(time, duration, fps)
   return clamp(timeAtFrame(frame + direction, fps), 0, duration)

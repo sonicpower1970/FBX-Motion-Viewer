@@ -82,6 +82,18 @@ test('extracted Mac package runs with bundled Node and no network dependencies',
       await page.getByText('0 meshes · 25 bones · 1 takes').waitFor()
       assert.equal(await page.getByTestId('end-frame').textContent(), '932')
     }
+    await page.getByRole('button', { name: 'Light viewport background', exact: true }).click()
+    await page.getByRole('button', { name: '16:9 Frame Guide', exact: true }).click()
+    await page.getByRole('button', { name: 'BURN-IN', exact: true }).click()
+    const pngEvent = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'CAPTURE', exact: true }).click()
+    await page.getByText('Capture complete', { exact: true }).waitFor()
+    const pngDownload = await pngEvent
+    assert.match(pngDownload.suggestedFilename(), /_f[0-9]+\.png$/)
+    const pngBytes = await readFile(await pngDownload.path())
+    assert.equal(pngBytes.subarray(1, 4).toString(), 'PNG')
+    assert.equal(pngBytes.readUInt32BE(16), 1920)
+    assert.equal(pngBytes.readUInt32BE(20), 1080)
     const frameBeforeBatch = await page.getByLabel('Current frame').inputValue()
     // Use real browser file handles/streams in private origin storage. Only the
     // native directory-selection dialog is substituted; MP4 writes are real.

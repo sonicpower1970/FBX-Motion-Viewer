@@ -1,3 +1,4 @@
+import type { BackgroundMode } from '../viewer/backgroundTheme'
 import { ViewerEngine } from '../viewer/ViewerEngine'
 import type { ViewerSnapshot } from '../types/viewer'
 import type { FbxFrameRate } from '../viewer/fbxFrameRate'
@@ -21,7 +22,7 @@ export interface BatchJob {
   id: number; file: File; status: JobStatus; progress: number; detail: string
   frameRate?: FbxFrameRate; frames?: number; outputName?: string; error?: string
 }
-export interface BatchOptions { resolution: '720p' | '1080p'; burnIn: boolean; directory: OutputDirectory }
+export interface BatchOptions { resolution: '720p' | '1080p'; background?: BackgroundMode; burnIn: boolean; directory: OutputDirectory }
 
 // Defer file creation until the shared exporter is ready to save. Never overwrite
 // existing previews (including sanitized-name/case collisions on the target FS).
@@ -82,6 +83,7 @@ export class BatchController {
             }
           })
           this.active = viewer
+          viewer.setBackground(options.background ?? 'dark')
           viewer.suspendRendering(true)
           await viewer.load(job.file)
           if (this.cancelled) throw new DOMException('Batch cancelled.', 'AbortError')

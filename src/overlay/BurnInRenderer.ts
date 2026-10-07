@@ -1,5 +1,7 @@
 import { frameRect } from '../utils/frameGuide'
-import { displayFrame, endFrame } from '../utils/frameTime'
+import { displayFrame, endFrame, formatFrame } from '../utils/frameTime'
+import { BACKGROUND_THEMES } from '../viewer/backgroundTheme'
+import type { BackgroundMode } from '../viewer/backgroundTheme'
 
 export interface BurnInSettings { filename: boolean; frame: boolean }
 export interface BurnInData { name: string; time: number; duration: number; fps: number; startFrame: number }
@@ -7,9 +9,7 @@ export const burnInBasename = (name: string) => (name.split(/[\\/]/).pop() ?? ''
 export function frameCounter(data: BurnInData) {
   const end = endFrame(data.duration, data.fps, data.startFrame)
   const current = displayFrame(data.time, data.duration, data.fps, data.startFrame)
-  const digits = Math.max(4, String(Math.abs(end)).length)
-  const pad = (n: number) => `${n < 0 ? '-' : ''}${String(Math.abs(n)).padStart(digits, '0')}`
-  return `${pad(current)} / ${pad(end)}`
+  return `${formatFrame(current, end)} / ${formatFrame(end, end)}`
 }
 const font = (size: number) => `500 ${size}px Arial, sans-serif`
 
@@ -48,7 +48,7 @@ export class BurnInRenderer {
     this.canvas.className = 'burn-in-canvas'
     this.canvas.setAttribute('aria-hidden', 'true')
   }
-  draw(width: number, height: number, settings: BurnInSettings, data: BurnInData, scene?: HTMLCanvasElement, guideAspect?: number) {
+  draw(width: number, height: number, settings: BurnInSettings, data: BurnInData, scene?: HTMLCanvasElement, guideAspect?: number, background: BackgroundMode = 'dark') {
     if (this.canvas.width !== width) this.canvas.width = width
     if (this.canvas.height !== height) this.canvas.height = height
     const ctx = this.context
@@ -60,7 +60,7 @@ export class BurnInRenderer {
     ctx.save()
     ctx.translate(area.x, area.y)
     ctx.beginPath(); ctx.rect(0, 0, area.width, area.height); ctx.clip()
-    ctx.fillStyle = '#f0f0f0'; ctx.strokeStyle = 'rgba(0,0,0,0.8)'
+    ctx.fillStyle = BACKGROUND_THEMES[background].burnInText; ctx.strokeStyle = BACKGROUND_THEMES[background].burnInOutline
     ctx.lineWidth = 2 * scale; ctx.lineJoin = 'round'; ctx.textBaseline = 'bottom'
     const draw = (text: string, x: number) => { ctx.strokeText(text, x, y); ctx.fillText(text, x, y) }
     if (settings.filename) {

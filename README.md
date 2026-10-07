@@ -1,6 +1,6 @@
 # FBX Motion Viewer
 
-**v0.3.0** — A browser-based FBX animation viewer for VFX and motion-capture review. Built with React, TypeScript and Three.js. FBX files are processed locally in your browser.
+**v0.4.0** — A browser-based FBX animation viewer for VFX and motion-capture review. Built with React, TypeScript and Three.js. FBX files are processed locally in your browser.
 
 ## Try it online
 
@@ -32,6 +32,8 @@ FPS detection, FIT + FOLLOW camera, burn-in, and output-folder selection.
 - Playback, loop, timeline scrub, frame stepping and 0.25× / 0.5× / 1× / 2× playback speed.
 - Maya-style camera controls, FIT and ground-plane FOLLOW.
 - Infinite grid, X-Ray Bones and ground shadows.
+- Dark / Light viewport background, with dark application UI.
+- Still PNG capture of the current viewport/frame, including optional burn-in and 16:9 frame-guide composition; static FBX supported.
 - 16:9 composition guide and optional filename/frame-counter burn-in.
 - Offline frame-by-frame MP4 rendering and sequential **Batch FBX → MP4**.
 - Batch FPS metadata detection and built-in legacy FBX fallback, including tested FBX 6000 data.
@@ -102,7 +104,17 @@ FIT and FOLLOW are independent. FIT ON fits at relevant boundaries, including lo
 
 The four-corner toolbar icon toggles a centered 16:9 guide. It does not change the camera and is never rendered into MP4. The 720p/1080p export projection matches the guide region. Current Viewport export uses the viewport aspect ratio and need not be 16:9.
 
-**BURN-IN** toggles both filename (bottom left) and frame counter (bottom right), in the Viewer and MP4. Long names shrink and, when necessary, receive middle ellipsis. Paths are excluded. Burn-in is positioned inside the guide when the guide is enabled.
+**BURN-IN** toggles both filename (bottom left) and frame counter (bottom right), in the Viewer, PNG and MP4. FBX files without animation display filename only. Long names shrink and, when necessary, receive middle ellipsis. Paths are excluded. Burn-in is positioned inside the guide when the guide is enabled.
+
+### Viewport background and still PNG capture
+
+The **DARK / LIGHT** toolbar toggle changes only the viewport background and helper contrast. DARK (default) uses `#1c232b`; LIGHT uses neutral gray `#b8b8b8`. Application UI, mesh materials, textures, lighting and camera settings are unchanged.
+
+Press **CAPTURE**, beside EXPORT MP4, to save the current camera composition and animation frame as PNG. Files without animation can also be captured. Capture does not fit the camera, seek a new frame or reinitialize Follow.
+
+With the 16:9 guide ON, capture saves the guide's interior at **1920×1080**, without guide lines, labels or the outside overlay. With the guide OFF, it saves the full viewport at its CSS pixel dimensions, without multiplying output by Retina scaling. Optional burn-in uses the shared Viewer/MP4 layout.
+
+Animated filenames include the current frame, such as `walk_f0025.png`; static filenames are `prop.png`. Parent paths are excluded. Supported browsers open a Save File Picker; other browsers download the PNG. Cancelling the dialog is normal. The chosen background also applies to single and batch MP4 exports.
 
 ### Single MP4 export
 
@@ -110,12 +122,13 @@ Choose 1280×720, 1920×1080 or Current Viewport and press **EXPORT MP4**. A sup
 
 Export covers the selected take, at Timeline FPS and original speed (1×), with no audio or application UI. Every output frame is evaluated at its explicit animation time, rendered and encoded; this is not a real-time screen recording. The end pose is included. Current Viewport uses drawing-buffer pixels, rounding odd dimensions down to even values.
 
-FIT/FOLLOW and display settings apply. With FIT OFF, the camera composition is preserved; FOLLOW rebases the relative composition to START. Export uses a separate camera. Completion, cancellation and failure restore the original Viewer animation/playback state. Progress and final status are displayed.
+FIT/FOLLOW and display settings, including DARK / LIGHT, apply. With FIT OFF, the camera composition is preserved; FOLLOW rebases the relative composition to START. Export uses a separate camera. Completion, cancellation and failure restore the original Viewer animation/playback state. Progress and final status are displayed.
 
 ## Batch export
 
 Open **BATCH EXPORT**, choose multiple FBX files or drop them into the queue, then **SELECT FOLDER** and **START BATCH**.
 
+- Background inherits the current Viewer DARK / LIGHT selection.
 - Each file uses its default take, with **FIT + FOLLOW fixed ON**.
 - Resolution: 1080p (default) or 720p. Burn-in defaults to ON.
 - FPS is **AUTO**, read from FBX time metadata. Unknown metadata uses a visible **30 fps (fallback)**. Batch has no manual FPS override.
@@ -196,7 +209,7 @@ The first package build downloads official Node runtimes and verifies SHA-256 ch
 
 Packages include the Viewer, Node runtime, launchers, licenses and Mediabunny's matching source. Source assets, private FBX files and development dependencies are not bundled. A large Three.js bundle warning is currently expected.
 
-See [public release checklist](docs/public-release.md), [v0.3.0 release notes draft](docs/release-notes-v0.3.0.md), [specifications](docs/specifications.md) and [roadmap](docs/roadmap.md). Historical version documents describe earlier behavior; this README describes v0.3.0.
+See [public release checklist](docs/public-release.md), [v0.4.0 release notes](docs/release-notes-v0.4.0.md), [v0.4.0 implementation and validation](docs/v0.4.0.md), [specifications](docs/specifications.md) and [roadmap](docs/roadmap.md). Historical version documents describe earlier behavior; this README describes v0.4.0.
 
 ## License
 

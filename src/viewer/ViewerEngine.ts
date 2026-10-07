@@ -1,4 +1,7 @@
-import { applyExportProjection } from './exportCamera'
+import { applyExportProjection, exportCamera } from './exportCamera'
+import { BACKGROUND_THEMES } from './backgroundTheme'
+import type { BackgroundMode } from './backgroundTheme'
+import { captureFileName, captureSize, chooseImageDestination, pngBlob } from '../export/StillCapture'
 import { FRAME_GUIDES } from '../utils/frameGuide'
 import type { FrameGuideMode } from '../utils/frameGuide'
 import { BurnInRenderer } from '../overlay/BurnInRenderer'
@@ -28,6 +31,7 @@ export class ViewerEngine {
   private readonly follow: FollowController
   private readonly ground: GroundShadow
   private readonly burnIn = new BurnInRenderer()
+  private captureAbort: AbortController | null = null
   private exportAbort: AbortController | null = null
   private asset: AssetInstance | null = null
   private state: ViewerSnapshot = { ...INITIAL_SNAPSHOT }
@@ -42,7 +46,7 @@ export class ViewerEngine {
   constructor(private readonly container: HTMLElement, private readonly publish: (state: ViewerSnapshot) => void) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: false })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    this.renderer.setClearColor(new Color('#1c232b'))
+    this.renderer.setClearColor(new Color(BACKGROUND_THEMES.dark.background))
     this.renderer.domElement.setAttribute('aria-label', '3D viewport. Alt and drag to navigate. F to fit.')
     this.renderer.domElement.tabIndex = 0
     container.append(this.renderer.domElement)
@@ -66,8 +70,10 @@ export class ViewerEngine {
     this.renderer.setAnimationLoop(this.render)
   }
 
+  private get outputBusy() { return this.state.exporting || this.state.capturing }
+
   private resize() {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     const { width, height } = this.container.getBoundingClientRect()
     this.renderer.setSize(Math.max(1, width), Math.max(1, height))
     this.camera.aspect = Math.max(1, width) / Math.max(1, height)
@@ -76,7 +82,7 @@ export class ViewerEngine {
   private visibilityChanged = () => { this.lastTime = 0 }
   private contextLost = (event: Event) => {
     event.preventDefault()
-    this.exportAbort?.abort()
+    this.exportAbort?.abort(); this.captureAbort?.abort()
     if (this.asset) this.asset.playback.playing = false
     this.state.error = 'The GPU context was lost. Waiting for recovery; reload the page if it does not recover.'
     this.emit()
@@ -84,7 +90,7 @@ export class ViewerEngine {
   private contextRestored = () => { this.state.error = null; this.lastTime = 0; this.emit() }
 
   private render = (timestamp: number) => {
-    if (this.disposed || this.state.exporting) return
+    if (this.disposed || this.outputBusy) return
     const delta = this.lastTime ? (timestamp - this.lastTime) / 1000 : 0
     this.lastTime = timestamp
     const wrapped = !document.hidden && this.asset?.playback.advance(delta)
@@ -111,7 +117,7 @@ export class ViewerEngine {
   }
 
   async load(file: File) {
-    if (this.state.loading || this.state.exporting || this.disposed) return
+    if (this.state.loading || this.outputBusy || this.disposed) return
     const generation = ++this.loadingGeneration
     const abort = new AbortController()
     this.loadAbort = abort
@@ -136,6 +142,7 @@ export class ViewerEngine {
       this.asset.playback.fps = this.state.fps
       this.asset.playback.loop = this.state.loop
       this.asset.playback.speed = this.state.speed
+      this.asset.setBackground(this.state.background)
       this.asset.setXRay(this.state.xray)
       this.asset.setMeshVisible(this.state.meshVisible)
       this.asset.helper.visible = this.state.boneVisible
@@ -184,35 +191,35 @@ export class ViewerEngine {
     this.ground.update(this.follow.position())
   }
   fit() {
-    if (this.asset && !this.disposed && !this.state.exporting) {
+    if (this.asset && !this.disposed && !this.outputBusy) {
       this.navigation.fit(this.asset.root, this.guideAspect())
       this.follow.resetFollowReferenceWithoutMovingCamera()
     }
   }
-  togglePlay() { if (!this.state.loading && !this.state.exporting) { this.asset?.playback.toggle(); this.updatePose(); this.lastTime = 0; this.emit() } }
-  step(direction: -1 | 1) { if (!this.state.loading && !this.state.exporting) { this.asset?.playback.step(direction); this.updatePose(); this.emit() } }
+  togglePlay() { if (!this.state.loading && !this.outputBusy) { this.asset?.playback.toggle(); this.updatePose(); this.lastTime = 0; this.emit() } }
+  step(direction: -1 | 1) { if (!this.state.loading && !this.outputBusy) { this.asset?.playback.step(direction); this.updatePose(); this.emit() } }
   seekFrame(frame: number) {
-    if (!this.asset || this.state.loading || this.state.exporting) return
+    if (!this.asset || this.state.loading || this.outputBusy) return
     this.asset.playback.playing = false
     this.asset.playback.seek(timeAtFrame(Math.round(frame), this.state.fps, this.state.startFrame))
     this.updatePose()
     this.emit()
   }
   setFps(fps: number) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     if (!FRAME_RATES.some((entry) => entry.value === fps)) return
     this.state.fps = fps
     if (this.asset) this.asset.playback.fps = fps
     this.emit()
   }
   setLoop(loop: boolean) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     this.state.loop = loop
     if (this.asset) this.asset.playback.loop = loop
     this.emit()
   }
   selectClip(index: number) {
-    if (!this.asset || !this.asset.root.animations[index] || this.state.loading || this.state.exporting) return
+    if (!this.asset || !this.asset.root.animations[index] || this.state.loading || this.outputBusy) return
     this.asset.playback.select(this.asset.root.animations[index])
     this.follow.attach(findFollowTarget(this.asset.root, this.asset.root.animations[index]))
     this.ground.configure(this.asset.root, assetBounds(this.asset.root), this.follow.position())
@@ -222,7 +229,7 @@ export class ViewerEngine {
     this.emit()
   }
   setVisibility(kind: 'meshVisible' | 'boneVisible' | 'gridVisible', visible: boolean) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     this.state[kind] = visible
     this.asset?.setMeshVisible(this.state.meshVisible)
     if (this.asset) this.asset.helper.visible = this.state.boneVisible
@@ -230,53 +237,67 @@ export class ViewerEngine {
     this.emit()
   }
   setSpeed(speed: number) {
-    if (this.state.exporting || ![0.25, 0.5, 1, 2].includes(speed)) return
+    if (this.outputBusy || ![0.25, 0.5, 1, 2].includes(speed)) return
     this.state.speed = speed
     if (this.asset) this.asset.playback.speed = speed
     this.emit()
   }
   setXRay(enabled: boolean) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     this.state.xray = enabled; this.asset?.setXRay(enabled); this.emit()
   }
   setShadow(enabled: boolean) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     this.state.shadow = enabled; this.ground.setEnabled(enabled); this.emit()
   }
   setFitEnabled(enabled: boolean) {
-    if (this.state.exporting || this.state.loading || this.disposed || enabled === this.state.fitEnabled) return
+    if (this.outputBusy || this.state.loading || this.disposed || enabled === this.state.fitEnabled) return
     if (enabled) this.fit()
     this.state.fitEnabled = enabled
     this.emit()
   }
   setFollow(enabled: boolean) {
-    if (this.state.exporting || this.state.loading || this.disposed || enabled === this.state.follow) return
+    if (this.outputBusy || this.state.loading || this.disposed || enabled === this.state.follow) return
     if (enabled && this.state.fitEnabled) this.fit()
     this.state.follow = enabled; this.follow.setMode(enabled ? 'ground' : 'off'); this.emit()
   }
   private guideAspect() { return this.state.frameGuide === 'off' ? undefined : FRAME_GUIDES[this.state.frameGuide] }
   setFrameGuide(mode: FrameGuideMode) {
-    if (this.state.exporting || (mode !== 'off' && !(mode in FRAME_GUIDES))) return
+    if (this.outputBusy || (mode !== 'off' && !(mode in FRAME_GUIDES))) return
     this.state.frameGuide = mode
     this.drawBurnIn()
     this.emit()
   }
   setBurnIn(enabled: boolean) {
-    if (this.state.exporting) return
+    if (this.outputBusy) return
     this.state.burnIn = enabled
     this.drawBurnIn()
     this.emit()
+  }
+  setBackground(mode: BackgroundMode) {
+    if (this.state.exporting || this.state.capturing || !(mode in BACKGROUND_THEMES)) return
+    this.state.background = mode
+    const theme = BACKGROUND_THEMES[mode]
+    this.renderer.setClearColor(theme.background)
+    this.grid.setBackground(mode)
+    this.asset?.setBackground(mode)
+    this.ground.plane.material.opacity = theme.shadowOpacity
+    this.drawBurnIn()
+    this.emit()
+  }
+  private burnInSettings() {
+    return { filename: this.state.burnIn, frame: this.state.burnIn && this.state.clipIndex >= 0 }
   }
   private burnInData() {
     return { name: this.asset?.info.name ?? '', time: this.asset?.playback.time ?? 0,
       duration: this.asset?.playback.duration ?? 0, fps: this.state.fps, startFrame: this.state.startFrame }
   }
   private drawBurnIn() {
-    const settings = { filename: this.state.burnIn, frame: this.state.burnIn }
+    const settings = this.burnInSettings()
     if (!this.asset || (!settings.filename && !settings.frame)) { this.burnIn.canvas.remove(); return }
     if (!this.burnIn.canvas.isConnected) this.container.append(this.burnIn.canvas)
     const canvas = this.renderer.domElement
-    this.burnIn.draw(canvas.width, canvas.height, settings, this.burnInData(), undefined, this.guideAspect())
+    this.burnIn.draw(canvas.width, canvas.height, settings, this.burnInData(), undefined, this.guideAspect(), this.state.background)
   }
   // Used only on the isolated Batch engine, never on the user's live Viewer.
   prepareBatch(burnIn: boolean) {
@@ -295,10 +316,73 @@ export class ViewerEngine {
     this.renderer.setAnimationLoop(suspended ? null : this.render)
     this.lastTime = 0
   }
-  cancelExport() { this.exportAbort?.abort() }
+  cancelExport() { this.exportAbort?.abort(); this.captureAbort?.abort() }
+
+  async captureImage() {
+    if (!this.asset || this.state.loading || this.state.exporting || this.state.capturing || this.disposed) return
+    const playback = this.asset.playback
+    const saved = { playing: playback.playing, controls: this.navigation.controls.enabled,
+      size: this.renderer.getSize(new Vector2()), ratio: this.renderer.getPixelRatio() }
+    const data = this.burnInData()
+    const name = captureFileName(data, this.state.clipIndex >= 0)
+    const size = captureSize(this.state.frameGuide, saved.size.x, saved.size.y)
+    const abort = new AbortController()
+    this.captureAbort = abort
+    playback.playing = false
+    this.navigation.controls.enabled = false
+    this.state = { ...this.state, capturing: true, exportStatus: 'Choose PNG save location…', error: null }
+    this.emit()
+    let composite: BurnInRenderer | undefined
+    try {
+      // Open the picker within user activation, then snapshot before the first await.
+      const destination = chooseImageDestination(name)
+      // A synchronous GPU/Canvas failure must still consume a picker rejection.
+      void destination.catch(() => {})
+      const camera = exportCamera(this.camera, size.width / size.height, this.state.frameGuide !== 'off')
+      composite = new BurnInRenderer()
+      let image: Promise<Blob>
+      try {
+        this.renderer.setPixelRatio(1)
+        this.renderer.setSize(size.width, size.height, false)
+        // No seek, Fit, Follow update/reset or mutation of the live camera.
+        this.renderer.render(this.scene, camera)
+        composite.draw(size.width, size.height, this.burnInSettings(), data, this.renderer.domElement, undefined, this.state.background)
+        image = pngBlob(composite.canvas)
+      } finally {
+        this.renderer.setPixelRatio(saved.ratio)
+        this.renderer.setSize(saved.size.x, saved.size.y, false)
+        this.renderer.render(this.scene, this.camera)
+        this.drawBurnIn()
+      }
+      const [output, blob] = await Promise.all([destination, image])
+      abort.signal.throwIfAborted()
+      this.state.exportStatus = 'Saving PNG…'; this.emit()
+      // PNG and MP4 share stream commit, abort and browser-download handling.
+      await saveExportedVideo(blob, output, abort.signal)
+      this.state.exportStatus = 'Capture complete'
+    } catch (error) {
+      if (!this.disposed) {
+        const cancelled = abort.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')
+        this.state.exportStatus = cancelled ? 'Capture cancelled' : 'Capture failed'
+        if (!cancelled) this.state.error = error instanceof Error ? error.message : 'Could not capture PNG.'
+      }
+    } finally {
+      composite?.dispose()
+      if (!this.disposed) {
+        playback.playing = saved.playing
+        this.navigation.controls.enabled = saved.controls
+        this.state.capturing = false
+        const bounds = this.container.getBoundingClientRect()
+        if (Math.max(1, bounds.width) !== saved.size.x || Math.max(1, bounds.height) !== saved.size.y) this.resize()
+        this.lastTime = 0
+        this.emit()
+      }
+      this.captureAbort = null
+    }
+  }
 
   async exportMovie(resolution: ExportResolution, destinationOverride?: VideoDestination) {
-    if (!this.asset || this.state.loading || this.state.exporting || this.asset.playback.duration <= 0 || this.disposed) return
+    if (!this.asset || this.state.loading || this.outputBusy || this.asset.playback.duration <= 0 || this.disposed) return
     const asset = this.asset
     const playback = asset.playback
     const saved = {
@@ -333,7 +417,7 @@ export class ViewerEngine {
       abort.signal.throwIfAborted()
       this.renderer.setPixelRatio(1)
       this.renderer.setSize(size.width, size.height, false)
-      const burnSettings = { filename: this.state.burnIn, frame: this.state.burnIn }
+      const burnSettings = this.burnInSettings()
       if (burnSettings.filename || burnSettings.frame) {
         composite = new BurnInRenderer()
         composite.canvas.width = size.width; composite.canvas.height = size.height
@@ -345,7 +429,7 @@ export class ViewerEngine {
           follow.update()
           this.ground.update(follow.position())
           this.renderer.render(this.scene, camera)
-          composite?.draw(size.width, size.height, burnSettings, this.burnInData(), this.renderer.domElement)
+          composite?.draw(size.width, size.height, burnSettings, this.burnInData(), this.renderer.domElement, undefined, this.state.background)
         },
         progress: (exportProgress, exportStatus) => {
           this.state = { ...this.state, exportProgress, exportStatus }; this.emit()
@@ -386,7 +470,7 @@ export class ViewerEngine {
   }
   dispose() {
     this.disposed = true
-    this.exportAbort?.abort()
+    this.exportAbort?.abort(); this.captureAbort?.abort()
     this.burnIn.dispose()
     this.ground.dispose()
     this.loadAbort?.abort()

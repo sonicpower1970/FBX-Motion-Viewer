@@ -1,4 +1,5 @@
 import type { FrameGuideMode } from '../utils/frameGuide'
+import type { BackgroundMode } from '../viewer/backgroundTheme'
 
 export interface ClipInfo { name: string; duration: number }
 export interface AssetInfo {
@@ -25,6 +26,8 @@ export interface ViewerSnapshot {
   fitEnabled: boolean
   follow: boolean
   exporting: boolean
+  capturing: boolean
+  background: BackgroundMode
   exportProgress: number
   frameGuide: FrameGuideMode
   burnIn: boolean
@@ -42,7 +45,7 @@ export const INITIAL_SNAPSHOT: ViewerSnapshot = {
   time: 0, duration: 0, playing: false, loop: true, clipIndex: -1,
   fps: 30, startFrame: 0, renderFps: 0,
   speed: 1, xray: false, shadow: false, fitEnabled: true, follow: false,
-  frameGuide: 'off', burnIn: false,
+  frameGuide: 'off', burnIn: false, background: 'dark', capturing: false,
   exporting: false, exportProgress: 0, exportStatus: '',
   meshVisible: true, boneVisible: true, gridVisible: true,
 }

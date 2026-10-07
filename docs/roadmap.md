@@ -44,7 +44,17 @@ See [v0.2 behavior, limits and acceptance checklist](v0.2.md).
 
 See [v0.3.0 validation and usage](v0.3.0.md).
 
-## After v0.3.0 — Review workflows
+## v0.4.0 — Viewport background and still capture
+
+- DARK / LIGHT changes only viewport background and helper contrast; application UI stays dark.
+- PNG capture preserves the current frame, camera and Follow composition; static FBX supported.
+- Shared guide projection and Burn-in path with MP4; guide ON captures 1920×1080.
+- Single and Batch MP4 inherit the selected background; existing Batch workflow retained.
+- v0.3.0 remains available as a previous release.
+
+See [v0.4.0 implementation and validation](v0.4.0.md).
+
+## After v0.4.0 — Review workflows
 
 - Root Motion Trail without modifying original root motion.
 - FBX scene information.

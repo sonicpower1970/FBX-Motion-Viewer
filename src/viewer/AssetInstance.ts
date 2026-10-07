@@ -3,6 +3,8 @@ import type { Group } from 'three'
 import type { AssetInfo } from '../types/viewer'
 import { PlaybackController } from './PlaybackController'
 import { disposeAsset } from './disposeAsset'
+import { BACKGROUND_THEMES } from './backgroundTheme'
+import type { BackgroundMode } from './backgroundTheme'
 
 export class AssetInstance {
   readonly playback: PlaybackController
@@ -37,6 +39,10 @@ export class AssetInstance {
     const materials = Array.isArray(this.helper.material) ? this.helper.material : [this.helper.material]
     materials.forEach(material => { material.depthTest = !enabled; material.depthWrite = false })
     this.helper.renderOrder = enabled ? 1000 : 0
+  }
+  setBackground(mode: BackgroundMode) {
+    const theme = BACKGROUND_THEMES[mode]
+    this.helper.setColors(new Color(theme.boneStart), new Color(theme.boneEnd))
   }
   setMeshVisible(visible: boolean) {
     // Layers hide only renderable meshes, not descendant bones or other objects.

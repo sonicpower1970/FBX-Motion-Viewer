@@ -1,5 +1,7 @@
 # Public release checklist
 
+## Initial v0.3.0 source baseline
+
 The public source baseline is v0.3.0. Publication is a separate, explicitly authorized step.
 
 1. Preserve the private development history and working source backup locally.
@@ -12,3 +14,12 @@ The public source baseline is v0.3.0. Publication is a separate, explicitly auth
 8. Create the v0.3.0 tag on the reviewed public commit and prepare a GitHub Release using the draft release notes. Attach the six ZIPs and their `.sha256` files, not private test data.
 
 No automatic publishing workflow is installed by this preparation. Repository name, URL, author email and actual hosted verification remain publication-time inputs. Public screenshots should use only original or clearly licensed assets.
+
+## Subsequent release: v0.4.0
+
+- Apply only necessary tested changes to the public checkout; retain public README links, screenshots, attribution and licenses. Never copy development caches, backups, logs, private assets or generated outputs into Git history.
+- Verify version, security/privacy, dependency licenses, tests, Pages build and the six package ZIPs/checksums before committing.
+- Commit only the public checkout as `Release FBX Motion Viewer v0.4.0`, then push main and verify its Pages deployment.
+- After Pages verification, create the annotated `v0.4.0` tag with message `FBX Motion Viewer v0.4.0` and push it.
+- Create a Draft Release, attach six v0.4.0 ZIPs and six SHA-256 files, and verify uploaded digests. Keep the release **DRAFT** until the maintainer completes hosted hardware acceptance and authorizes publication.
+- Preserve the existing v0.3.0 tag, release and assets.
